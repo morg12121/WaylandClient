@@ -2,7 +2,7 @@ OPTIONS=-Wall -Werror -std=c99 -pedantic
 DISABLEDWARNINGS=-Wno-unused-variable -Wno-unused-function
 OPTIMIZATIONS=-O0
 CODEFLAGS=
-LIBRARIES=
+LIBRARIES=-lwayland-client
 #LIBRARIES=-lLIBRARY
 #CODEFLAGS=-DFLAG
 
