@@ -11,20 +11,21 @@
 #define RESOLUTION_WIDTH 1280
 #define RESOLUTION_HEIGHT 720
 
-uint64_t Stride = sizeof(uint32_t)*RESOLUTION_WIDTH;
+
+static void *Data = 0; // NOTE(Felix): Pointer to Image Buffer
+static uint64_t Stride = sizeof(uint32_t)*RESOLUTION_WIDTH;
+static int32_t GlobalRunning = 1;
 
 // NOTE(Felix): We have to use Listeners with corresponding callback functions
 // We save some global settings / references here, as the callback functions have set signatures
-static void *Data = 0; // NOTE(Felix): Pointer to Image Buffer
-struct wl_display *Display = 0;
-struct wl_compositor *Compositor = 0;
-struct wl_shm *Shm = 0;
-struct wl_surface *Surface = 0;
-struct wl_callback *FrameCallback = 0;
-struct wl_buffer *Buffer = 0;
-struct xdg_wm_base *Base;
-struct xdg_toplevel *XdgToplevel = 0;
-static int32_t GlobalRunning = 1;
+static struct wl_display *Display = 0;
+static struct wl_compositor *Compositor = 0;
+static struct wl_shm *Shm = 0;
+static struct wl_surface *Surface = 0;
+static struct wl_callback *FrameCallback = 0;
+static struct wl_buffer *Buffer = 0;
+static struct xdg_wm_base *Base;
+static struct xdg_toplevel *XdgToplevel = 0;
 
 // NOTE(Felix): This function is used to print received registry events
 // as well as save reference to the global objects / singletons.
