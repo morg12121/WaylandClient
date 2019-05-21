@@ -29,9 +29,9 @@ static int32_t GlobalRunning = 1;
 // NOTE(Felix): This function is used to print received registry events
 // as well as save reference to the global objects / singletons.
 static void
-global_registry_handler(void *Data, struct wl_registry *Registry,
-                        uint32_t Id,
-                        const char *Interface, uint32_t Version)
+CallbackRegistryGlobalAnnounce(void *Data, struct wl_registry *Registry,
+                               uint32_t Id,
+                               const char *Interface, uint32_t Version)
 {
 	fprintf(stderr, "Registry event for %s with ID %d received.\n", Interface, Id);
 	if (strcmp(Interface, wl_compositor_interface.name) == 0)
@@ -58,8 +58,8 @@ global_registry_handler(void *Data, struct wl_registry *Registry,
 }
 
 static void
-global_registry_remover(void *Data, struct wl_registry *Registry,
-                        uint32_t Id)
+CallbackRegistryGlobalRemove(void *Data, struct wl_registry *Registry,
+                             uint32_t Id)
 {
 	fprintf(stderr, "Registry remove call received.\n");
 }
@@ -67,44 +67,47 @@ global_registry_remover(void *Data, struct wl_registry *Registry,
 // NOTE(Felix): Callback settings for the functions above
 // Get global objects / singletons
 static const struct wl_registry_listener GlobalRegistryListener = {
-	global_registry_handler,
-	global_registry_remover
+	CallbackRegistryGlobalAnnounce,
+	CallbackRegistryGlobalRemove
 };
 
-static void xdg_surface_handle_configure (void *data, 
-                                          struct xdg_surface *xdg_surface,
-                                          uint32_t serial)
+static void CallbackXdgSurfaceConfigure(void *Data, 
+                                        struct xdg_surface *XdgSurface,
+                                        uint32_t Id)
 {
 	// NOTE(Felix): Configure surface
-	xdg_surface_ack_configure(xdg_surface, serial);
+	xdg_surface_ack_configure(XdgSurface, Id);
 }
 
 // NOTE(Felix): Callback for the xdg_surface
-static const struct xdg_surface_listener  xdg_surface_listener = {
-	.configure = xdg_surface_handle_configure
+static const struct xdg_surface_listener XdgSurfaceListener = {
+	.configure = CallbackXdgSurfaceConfigure
 };
 
 static void
-noop()
+CallbackXdgToplevelConfigure()
 { 
 	// NOTE(Felix): Init stuff here
 }
 
-static void xdg_toplevel_handle_close(void *data,
-                                      struct xdg_toplevel *xdg_toplevel)
+static void
+CallbackXdgToplevelClose(void *Data,
+                         struct xdg_toplevel *XdgToplevel)
 {
 	GlobalRunning = 0;
 }
 
 // NOTE(Felix): Callback settings for the xdg toplevel
-static const struct xdg_toplevel_listener xdg_toplevel_listener = {
-	.configure = noop,
-	.close = xdg_toplevel_handle_close
+static const struct xdg_toplevel_listener XdgToplevelListener = {
+	.configure = CallbackXdgToplevelConfigure,
+	.close = CallbackXdgToplevelClose
 };
 
+// NOTE(Felix): This function does the actual drawing for the window
 static void
 PaintPixels(void)
 {
+	// TODO(Felix): Do this smarter / do something cooler than this
 	static uint32_t offset = 0;
 	for (uint32_t Y = 0; Y < RESOLUTION_HEIGHT; ++Y)
 	{
@@ -123,9 +126,8 @@ PaintPixels(void)
 
 // NOTE(Felix): Protoype
 static const struct wl_callback_listener FrameListener;
-
 static void
-Redraw(void *Data, struct wl_callback *Callback, uint32_t time)
+CallbackFrameDraw(void *Data, struct wl_callback *Callback, uint32_t time)
 {   
 	wl_callback_destroy(Callback);
 	wl_surface_damage(Surface, 0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
@@ -139,7 +141,7 @@ Redraw(void *Data, struct wl_callback *Callback, uint32_t time)
 // NOTE(Felix): Callback settings for a custom Listener,
 // used for the "frame" of the surface (actual pixels)
 static const struct wl_callback_listener FrameListener = {
-	Redraw
+	CallbackFrameDraw
 };
 
 int 
@@ -152,7 +154,7 @@ main(void)
 		fprintf(stderr, "Could not connect to Wayland display.\n");
 		return (-1);
 	}
-	
+
 	// NOTE(Felix): Add listeners to receive global objects
 	struct wl_registry *Registry = wl_display_get_registry(Display);
 	wl_registry_add_listener(Registry, &GlobalRegistryListener, 0);
@@ -234,14 +236,14 @@ main(void)
 	// NOTE(Felix): Use Xdg surface(Created from Surface, used by the compositor for some reason)
 	struct xdg_surface *XdgSurface = xdg_wm_base_get_xdg_surface(Base, Surface);
 	XdgToplevel = xdg_surface_get_toplevel(XdgSurface);
-	xdg_surface_add_listener(XdgSurface, &xdg_surface_listener, 0);
-	xdg_toplevel_add_listener(XdgToplevel, &xdg_toplevel_listener, 0);
-	
+	xdg_surface_add_listener(XdgSurface, &XdgSurfaceListener, 0);
+	xdg_toplevel_add_listener(XdgToplevel, &XdgToplevelListener, 0);
+
 	// NOTE(Felix): Trigger callbacks
 	wl_surface_commit(Surface);
 	wl_display_roundtrip(Display);
 
-	// NOTE(Felix): Setup Frame listeners (for draw methods)
+	// NOTE(Felix): Setup Frame listeners (for notification to redraw)
 	FrameCallback = wl_surface_frame(Surface);
 	wl_callback_add_listener(FrameCallback, &FrameListener, 0);
 
@@ -255,7 +257,7 @@ main(void)
 	{
 		// TODO(Felix): Process events - look into "wl_event_queue"
 	}
-	
+
 	// NOTE(Felix): Cleanup
 	munmap(Data, Size);
 	if (shm_unlink(SharedMemoryName) == -1)
