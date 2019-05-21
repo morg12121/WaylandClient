@@ -15,7 +15,7 @@ uint64_t Stride = sizeof(uint32_t)*RESOLUTION_WIDTH;
 
 // NOTE(Felix): We have to use Listeners with corresponding callback functions
 // We save some global settings / references here, as the callback functions have set signatures
-static void *Data = 0;
+static void *Data = 0; // NOTE(Felix): Pointer to Image Buffer
 struct wl_display *Display = 0;
 struct wl_compositor *Compositor = 0;
 struct wl_shm *Shm = 0;
