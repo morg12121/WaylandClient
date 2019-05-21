@@ -7,16 +7,20 @@
 #include <fcntl.h>
 
 #include <wayland-client.h>
-//#include <wayland-client-protocol.h>
 #include "xdg-shell-protocol.c"
 #include "xdg-shell-client-protocol.h"
 
 #define RESOLUTION_WIDTH 1280
 #define RESOLUTION_HEIGHT 720
 
+uint64_t Stride = sizeof(uint32_t)*RESOLUTION_WIDTH;
+static void *Data = 0;
 struct wl_display *Display = 0;
 struct wl_compositor *Compositor = 0;
 struct wl_shm *Shm = 0;
+struct wl_surface *Surface = 0;
+struct wl_callback *FrameCallback = 0;
+struct wl_buffer *Buffer = 0;
 struct xdg_wm_base *Base;
 struct xdg_toplevel *XdgToplevel = 0;
 static int32_t GlobalRunning = 1;
@@ -90,6 +94,43 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
 	.close = xdg_toplevel_handle_close
 };
 
+static void
+PaintPixels(void)
+{
+	static uint32_t offset = 0;
+	for (uint32_t Y = 0; Y < RESOLUTION_HEIGHT; ++Y)
+	{
+		uint32_t *PixelY = Data + Y*Stride;
+		for (uint32_t X = 0; X < RESOLUTION_WIDTH; ++X)
+		{
+			uint32_t *PixelX = PixelY+X;
+
+			*PixelX = 0xFF0000FF;
+			*PixelX += offset;
+		}
+	}
+
+	++offset;
+}
+
+// NOTE(Felix): Protoype
+static const struct wl_callback_listener FrameListener;
+static void
+Redraw(void *Data, struct wl_callback *Callback, uint32_t time)
+{   
+	wl_callback_destroy(Callback);
+	wl_surface_damage(Surface, 0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
+	PaintPixels();
+	FrameCallback = wl_surface_frame(Surface);
+	wl_surface_attach(Surface, Buffer, 0, 0);
+	wl_callback_add_listener(FrameCallback, &FrameListener, 0);
+	wl_surface_commit(Surface);
+}
+
+static const struct wl_callback_listener FrameListener = {
+	Redraw
+};
+
 int 
 main(void)
 {
@@ -127,7 +168,7 @@ main(void)
 	fprintf(stderr, "Found global xdg_wm_base object.\n");
 
 	// NOTE(Felix): Create surface - is used to draw stuff on it
-	struct wl_surface *Surface = wl_compositor_create_surface(Compositor);
+	Surface = wl_compositor_create_surface(Compositor);
 	if (!Surface)
 	{
 		fprintf(stderr, "Could not create surface.\n");
@@ -135,20 +176,7 @@ main(void)
 	}
 	fprintf(stderr, "Created surface.\n");
 
-	// NOTE(Felix): Create Region
-	/*struct wl_region *Region = wl_compositor_create_region(Compositor);
-	if (!Region)
-	{
-		fprintf(stderr, "Could not create Region.\n");
-		return (-1);
-	}
-	fprintf(stderr, "Created region.\n");
-	wl_region_add(Region, 0, 0, RESOLUTION_WIDTH, RESOLUTION_HEIGHT);
-	wl_surface_set_opaque_region(Surface, Region);
-	wl_surface_set_input_region(Surface, Region);*/
-
 	uint64_t Size = sizeof(uint32_t)*RESOLUTION_WIDTH*RESOLUTION_HEIGHT;
-	uint64_t Stride = sizeof(uint32_t)*RESOLUTION_WIDTH;
 
 	// NOTE(Felix): Memory to map the pool to
 	char const *SharedMemoryName = "/MySharedMemory";
@@ -159,7 +187,7 @@ main(void)
 	}
 
 	ftruncate(Fd, Size);
-	void *Data = mmap(0, Size, PROT_READ|PROT_WRITE, MAP_SHARED, Fd, 0);
+	Data = mmap(0, Size, PROT_READ|PROT_WRITE, MAP_SHARED, Fd, 0);
 	if (Data == MAP_FAILED)
 	{
 		fprintf(stderr, "mmap failed.\n");
@@ -180,7 +208,7 @@ main(void)
 
 	
 	// NOTE(Felix): Create wl_buffer
-	struct wl_buffer *Buffer = wl_shm_pool_create_buffer(MemoryPool,
+	Buffer = wl_shm_pool_create_buffer(MemoryPool,
 														 0,
 														 RESOLUTION_WIDTH,
 														 RESOLUTION_HEIGHT,
@@ -206,34 +234,26 @@ main(void)
 
 	wl_surface_commit(Surface);
 	wl_display_roundtrip(Display);
-	
+
+	FrameCallback = wl_surface_frame(Surface);
+	wl_callback_add_listener(FrameCallback, &FrameListener, 0);
 
 	// NOTE(Felix): Attach buffer to surface
 	wl_surface_attach(Surface, Buffer,
 					  0, 0);
 	wl_surface_commit(Surface);
+	uint32_t offset = 0;
 
 	while (wl_display_dispatch(Display) != -1 && GlobalRunning) 
 	{
-		static uint32_t Color = 0;
-		for (uint32_t Y = 0; Y < RESOLUTION_HEIGHT; ++Y)
-		{
-			uint32_t *PixelY = Data + Y*Stride;
-			for (uint32_t X = 0; X < RESOLUTION_WIDTH; ++X)
-			{
-				uint32_t *PixelX = PixelY+X;
-				//*Pixel++ = 0xFF0000FF;
-				*PixelX = Color++ % 0x000000FF;
-			}
-		}
 	}
 
 	// NOTE(Felix): Process events - look into "wl_event_queue"
-	//munmap(Data, Size);
-	//if (shm_unlink(SharedMemoryName) == -1)
-	//{
-	//	fprintf(stderr, "shm_unlink error.\n");
-	//}
+	munmap(Data, Size);
+	if (shm_unlink(SharedMemoryName) == -1)
+	{
+		fprintf(stderr, "shm_unlink error.\n");
+	}
 	xdg_toplevel_destroy(XdgToplevel);
 	xdg_surface_destroy(XdgSurface);
 	wl_surface_destroy(Surface);
