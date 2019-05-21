@@ -207,9 +207,7 @@ main(void)
 		fprintf(stderr, "mmap failed.\n");
 		return (-1);
 	}
-	struct wl_shm_pool *MemoryPool = wl_shm_create_pool(Shm,
-														Fd,
-														Size);
+	struct wl_shm_pool *MemoryPool = wl_shm_create_pool(Shm, Fd, Size);
 	if (!MemoryPool)
 	{
 		fprintf(stderr, "Unable to create shared memory pool.\n");
