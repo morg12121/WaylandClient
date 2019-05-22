@@ -4,6 +4,8 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
+#include <linux/input.h>
+
 #include <wayland-client.h>
 #include "xdg-shell-protocol.c"         // NOTE(Felix): These files are created on compile-time
 #include "xdg-shell-client-protocol.h"  // NOTE(Felix): Have a look at the makefile for further notes
@@ -24,8 +26,10 @@ static struct wl_shm *Shm = 0;
 static struct wl_surface *Surface = 0;
 static struct wl_callback *FrameCallback = 0;
 static struct wl_buffer *Buffer = 0;
+static struct wl_seat *Seat = 0;
 static struct xdg_wm_base *Base;
 static struct xdg_toplevel *XdgToplevel = 0;
+
 
 // NOTE(Felix): This function is used to print received registry events
 // as well as save reference to the global objects / singletons.
@@ -56,6 +60,13 @@ CallbackRegistryGlobalAnnounce(void *Data, struct wl_registry *Registry,
 		                        &xdg_wm_base_interface,
 		                        1);
 	}
+	else if (strcmp(Interface, wl_seat_interface.name) == 0)
+	{
+		Seat = wl_registry_bind(Registry,
+								Id,
+								&wl_seat_interface,
+								1);
+	}
 }
 
 static void
@@ -68,8 +79,8 @@ CallbackRegistryGlobalRemove(void *Data, struct wl_registry *Registry,
 // NOTE(Felix): Callback settings for the functions above
 // Get global objects / singletons
 static const struct wl_registry_listener GlobalRegistryListener = {
-	CallbackRegistryGlobalAnnounce,
-	CallbackRegistryGlobalRemove
+	.global = CallbackRegistryGlobalAnnounce,
+	.global_remove = CallbackRegistryGlobalRemove
 };
 
 static void CallbackXdgSurfaceConfigure(void *Data, 
@@ -142,7 +153,69 @@ CallbackFrameDraw(void *Data, struct wl_callback *Callback, uint32_t time)
 // NOTE(Felix): Callback settings for a custom Listener,
 // used for the "frame" of the surface (actual pixels)
 static const struct wl_callback_listener FrameListener = {
-	CallbackFrameDraw
+	.done = CallbackFrameDraw
+};
+
+static void
+CallbackKeyboardKeymap(void *Data, struct wl_keyboard *Keyboard, uint32_t Format, int32_t Fd, uint32_t Size)
+{
+	// NOTE(Felix): Keyboard mapping
+}
+
+static void
+CallbackKeyboardEnter(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial, struct wl_surface *Surface, struct wl_array *Keys)
+{
+	// NOTE(Felix): Enter event for a surface
+}
+ 
+static void
+CallbackKeyboardLeave(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial, struct wl_surface *Surface)
+{
+	// NOTE(Felix): Leave event for a surface
+}
+
+static void
+CallbackKeyboardKey(void *Data, struct wl_keyboard *Keyboard, 
+					uint32_t Serial, uint32_t Time, uint32_t Key, uint32_t State)
+{
+	// NOTE(Felix): Use linux/input.h keycodes
+	if (Key == KEY_ESC && State == WL_KEYBOARD_KEY_STATE_PRESSED)
+	{
+		GlobalRunning = 0;
+	}
+	else if (State == WL_KEYBOARD_KEY_STATE_PRESSED) 
+	{
+		fprintf(stderr, "Key with keycode %i was just pressed.\n", Key);
+	} 
+	else if (State == WL_KEYBOARD_KEY_STATE_RELEASED) 
+	{
+		fprintf(stderr, "Key with keycode %i was just released.\n", Key);
+	}
+
+}
+
+static void
+CallbackKeyboardModifiers(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial, 
+						  uint32_t ModsDepressed, uint32_t ModsLatched, uint32_t ModsLocked, uint32_t Group)
+{
+	// NOTE(Felix): Modifiers and group state(?)
+}
+
+static void
+CallbackKeyboardRepeatInfo(void *Data, struct wl_keyboard *Keyboard, int32_t Rate, int32_t Delay)
+{
+	// NOTE(Felix): Repeat rate and delay
+}
+
+// NOTE(Felix): Keyboard callbacks
+static const struct wl_keyboard_listener KeyboardListener = {
+	// NOTE(Felix): These all need to be set :(
+	.keymap = CallbackKeyboardKeymap,
+	.enter = CallbackKeyboardEnter,
+	.leave = CallbackKeyboardLeave,
+	.key = CallbackKeyboardKey,
+	.modifiers = CallbackKeyboardModifiers,
+	.repeat_info = CallbackKeyboardRepeatInfo
 };
 
 int 
@@ -179,6 +252,24 @@ main(void)
 		return (-1);
 	}
 	fprintf(stderr, "Found global xdg_wm_base object.\n");
+	if (!Seat)
+	{
+		fprintf(stderr, "Cannot find global wl_seat object.\n");
+		return (-1);
+	}
+	fprintf(stderr, "Found global wl_seat object.\n");
+
+
+	// NOTE(Felix): Get input device
+	// TODO(Felix): Add a listener to get the available inputs
+	struct wl_keyboard *Keyboard = wl_seat_get_keyboard(Seat);
+	if (!Keyboard)
+	{
+		fprintf(stderr, "Cannot get the keyboard interface.\n");
+		return (-1);
+	}
+	wl_keyboard_add_listener(Keyboard, &KeyboardListener, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP);
+	fprintf(stderr, "Connected to keyboard.\n");
 
 
 	// NOTE(Felix): Create surface from compositor - is used to draw stuff on it
@@ -265,6 +356,7 @@ main(void)
 	}
 	xdg_toplevel_destroy(XdgToplevel);
 	xdg_surface_destroy(XdgSurface);
+	wl_seat_release(Seat);
 	wl_surface_destroy(Surface);
 	wl_display_disconnect(Display);
 	return (0);

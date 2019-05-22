@@ -1,6 +1,5 @@
 TODO:
 Figure out how to get rid of the "extra panel" that is updated by changing focus of the window
-Figure out a way to handle input
 
 Resources:
 https://wayland.freedesktop.org/docs/html/ch04.html#sect-Protocol-Outputor
