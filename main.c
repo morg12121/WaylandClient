@@ -218,6 +218,83 @@ static const struct wl_keyboard_listener KeyboardListener = {
 	.repeat_info = CallbackKeyboardRepeatInfo
 };
 
+static void
+CallbackPointerEnter(void *Data, struct wl_pointer *Pointer, 
+					 uint32_t Serial, struct wl_surface *Surface, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
+{
+	// NOTE(Felix): Pointer enters surface
+}
+ 
+static void
+CallbackPointerLeave(void *Data, struct wl_pointer *Pointer, uint32_t Serial, struct wl_surface *Surface)
+{
+	// NOTE(Felix): Pointer leaves surface
+}
+ 
+static void
+CallbackPointerMotion(void *Data, struct wl_pointer *Pointer, 
+					  uint32_t Time, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
+{
+	// NOTE(Felix): Pointer motion
+}
+ 
+static void
+CallbackPointerButton(void *Data, struct wl_pointer *Pointer, 
+					  uint32_t Serial, uint32_t Time, uint32_t Button, uint32_t State)
+{
+	if (State == WL_POINTER_BUTTON_STATE_PRESSED)
+	{
+		fprintf(stderr, "Pointer button pressed.\n");
+	}
+	else if (State == WL_POINTER_BUTTON_STATE_RELEASED)
+	{
+		fprintf(stderr, "Pointer button released\n");
+	}
+}
+
+static void
+CallbackPointerAxis(void *Data, struct wl_pointer *Pointer, uint32_t Time, uint32_t Axis, wl_fixed_t Value)
+{
+	// NOTE(Felix): Scroll / axis notifications
+}
+ 
+static void
+CallbackPointerFrame(void *Data, struct wl_pointer *Pointer)
+{
+	// NOTE(Felix): End of a set of events
+}
+ 
+static void
+CallbackPointerAxisSource(void *Data, struct wl_pointer *Pointer, uint32_t AxisSource)
+{
+	// NOTE(Felix): Information about scroll and axis(?)
+}
+ 
+static void
+CallbackPointerAxisStop(void *Data, struct wl_pointer *Pointer, uint32_t Time, uint32_t Axis)
+{
+	// NOTE(Felix): Stop notification for scroll and axis(?)
+}
+ 
+static void
+CallbackPointerAxisDiscrete(void *Data, struct wl_pointer *Pointer, uint32_t Axis, int32_t Discrete)
+{
+	// NOTE(Felix): Discrete information about scroll and axis(?)
+}
+
+static const struct wl_pointer_listener PointerListener = {
+	// NOTE(Felix): Again, all of these need to be set
+	.enter = CallbackPointerEnter,
+	.leave = CallbackPointerLeave,
+	.motion = CallbackPointerMotion,
+	.button = CallbackPointerButton,
+	.axis = CallbackPointerAxis,
+	.frame = CallbackPointerFrame,
+	.axis_source = CallbackPointerAxisSource,
+	.axis_stop = CallbackPointerAxisStop,
+	.axis_discrete = CallbackPointerAxisDiscrete
+};
+
 int 
 main(void)
 {
@@ -260,7 +337,7 @@ main(void)
 	fprintf(stderr, "Found global wl_seat object.\n");
 
 
-	// NOTE(Felix): Get input device
+	// NOTE(Felix): Get keyboard device
 	// TODO(Felix): Add a listener to get the available inputs
 	struct wl_keyboard *Keyboard = wl_seat_get_keyboard(Seat);
 	if (!Keyboard)
@@ -270,6 +347,17 @@ main(void)
 	}
 	wl_keyboard_add_listener(Keyboard, &KeyboardListener, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP);
 	fprintf(stderr, "Connected to keyboard.\n");
+
+	
+	// NOTE(Felix): Get Pointer device
+	struct wl_pointer *Pointer = wl_seat_get_pointer(Seat);
+	if (!Pointer)
+	{
+		fprintf(stderr, "Cannto get the pointer interface.\n");
+		return (-1);
+	}
+	wl_pointer_add_listener(Pointer, &PointerListener, 0);
+	fprintf(stderr, "Connected to pointer.\n");
 
 
 	// NOTE(Felix): Create surface from compositor - is used to draw stuff on it
@@ -354,6 +442,8 @@ main(void)
 	{
 		fprintf(stderr, "shm_unlink error.\n");
 	}
+	wl_keyboard_release(Keyboard);
+	wl_pointer_release(Pointer);
 	xdg_toplevel_destroy(XdgToplevel);
 	xdg_surface_destroy(XdgSurface);
 	wl_seat_release(Seat);
