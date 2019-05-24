@@ -14,21 +14,21 @@
 #define RESOLUTION_HEIGHT 720
 
 
-static void *Data = 0; // NOTE(Felix): Pointer to Image Buffer
+static void *FrameBuffer = 0; // NOTE(Felix): Pointer to Image Buffer
 static uint64_t Stride = sizeof(uint32_t)*RESOLUTION_WIDTH;
+static int32_t WindowWidth = RESOLUTION_WIDTH;
+static int32_t WindowHeight = RESOLUTION_HEIGHT;
 static int32_t GlobalRunning = 1;
 
 // NOTE(Felix): We have to use Listeners with corresponding callback functions
 // We save some global settings / references here, as the callback functions have set signatures
-static struct wl_display *Display = 0;
 static struct wl_compositor *Compositor = 0;
 static struct wl_shm *Shm = 0;
 static struct wl_surface *Surface = 0;
-static struct wl_callback *FrameCallback = 0;
 static struct wl_buffer *Buffer = 0;
+static struct wl_callback *FrameCallback = 0;
 static struct wl_seat *Seat = 0;
-static struct xdg_wm_base *Base;
-static struct xdg_toplevel *XdgToplevel = 0;
+static struct xdg_wm_base *Base = 0;
 
 
 // NOTE(Felix): This function is used to print received registry events
@@ -97,9 +97,14 @@ static const struct xdg_surface_listener XdgSurfaceListener = {
 };
 
 static void
-CallbackXdgToplevelConfigure()
+CallbackXdgToplevelConfigure(void *Data, struct xdg_toplevel *XdgToplevel,
+							 int32_t Width, int32_t Height, struct wl_array *States)
 { 
-	// NOTE(Felix): Init stuff here
+	// NOTE(Felix): Window was resized / state changed
+	WindowWidth = Width;
+	WindowHeight = Height;
+
+	fprintf(stderr, "WindowWidth: %i, WindowHeight: %i\n", WindowWidth, WindowHeight);
 }
 
 static void
@@ -123,7 +128,7 @@ PaintPixels(void)
 	static uint32_t offset = 0;
 	for (uint32_t Y = 0; Y < RESOLUTION_HEIGHT; ++Y)
 	{
-		uint32_t *PixelY = Data + Y*Stride;
+		uint32_t *PixelY = FrameBuffer + Y*Stride;
 		for (uint32_t X = 0; X < RESOLUTION_WIDTH; ++X)
 		{
 			uint32_t *PixelX = PixelY+X;
@@ -262,8 +267,7 @@ static void
 CallbackPointerFrame(void *Data, struct wl_pointer *Pointer)
 {
 	// NOTE(Felix): End of a set of events
-}
- 
+} 
 static void
 CallbackPointerAxisSource(void *Data, struct wl_pointer *Pointer, uint32_t AxisSource)
 {
@@ -295,11 +299,12 @@ static const struct wl_pointer_listener PointerListener = {
 	.axis_discrete = CallbackPointerAxisDiscrete
 };
 
+
 int 
 main(void)
 {
 	// NOTE(Felix): Connect to Server
-	Display = wl_display_connect(0);
+	struct wl_display *Display = wl_display_connect(0);
 	if (!Display) 
 	{
 		fprintf(stderr, "Could not connect to Wayland display.\n");
@@ -380,8 +385,8 @@ main(void)
 		return(-1);
 	}
 	ftruncate(Fd, Size);
-	Data = mmap(0, Size, PROT_READ|PROT_WRITE, MAP_SHARED, Fd, 0);
-	if (Data == MAP_FAILED)
+	FrameBuffer = mmap(0, Size, PROT_READ|PROT_WRITE, MAP_SHARED, Fd, 0);
+	if (FrameBuffer == MAP_FAILED)
 	{
 		fprintf(stderr, "mmap failed.\n");
 		return (-1);
@@ -413,7 +418,7 @@ main(void)
 
 	// NOTE(Felix): Use Xdg surface(Created from Surface, used by the compositor for some reason)
 	struct xdg_surface *XdgSurface = xdg_wm_base_get_xdg_surface(Base, Surface);
-	XdgToplevel = xdg_surface_get_toplevel(XdgSurface);
+	struct xdg_toplevel *XdgToplevel = xdg_surface_get_toplevel(XdgSurface);
 	xdg_surface_add_listener(XdgSurface, &XdgSurfaceListener, 0);
 	xdg_toplevel_add_listener(XdgToplevel, &XdgToplevelListener, 0);
 
@@ -426,8 +431,7 @@ main(void)
 	wl_callback_add_listener(FrameCallback, &FrameListener, 0);
 
 	// NOTE(Felix): Attach buffer to surface
-	wl_surface_attach(Surface, Buffer,
-	                  0, 0);
+	wl_surface_attach(Surface, Buffer, 0, 0);
 	wl_surface_commit(Surface);
 
 	// NOTE(Felix): Main loop, dispatch also triggers redraw events
@@ -437,7 +441,7 @@ main(void)
 	}
 
 	// NOTE(Felix): Cleanup
-	munmap(Data, Size);
+	munmap(FrameBuffer, Size);
 	if (shm_unlink(SharedMemoryName) == -1)
 	{
 		fprintf(stderr, "shm_unlink error.\n");

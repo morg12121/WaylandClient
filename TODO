@@ -1,4 +1,5 @@
 TODO:
+wl_surface_damage_buffer crashes the program - why?
 Figure out how to get rid of the "extra panel" that is updated by changing focus of the window
 
 Resources:
