@@ -63,9 +63,9 @@ CallbackRegistryGlobalAnnounce(void *Data, struct wl_registry *Registry,
 	else if (strcmp(Interface, wl_seat_interface.name) == 0)
 	{
 		Seat = wl_registry_bind(Registry,
-								Id,
-								&wl_seat_interface,
-								1);
+		                        Id,
+		                        &wl_seat_interface,
+		                        1);
 	}
 }
 
@@ -98,7 +98,7 @@ static const struct xdg_surface_listener XdgSurfaceListener = {
 
 static void
 CallbackXdgToplevelConfigure(void *Data, struct xdg_toplevel *XdgToplevel,
-							 int32_t Width, int32_t Height, struct wl_array *States)
+                             int32_t Width, int32_t Height, struct wl_array *States)
 { 
 	// NOTE(Felix): Window was resized / state changed
 	WindowWidth = Width;
@@ -172,7 +172,7 @@ CallbackKeyboardEnter(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial,
 {
 	// NOTE(Felix): Enter event for a surface
 }
- 
+
 static void
 CallbackKeyboardLeave(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial, struct wl_surface *Surface)
 {
@@ -181,7 +181,7 @@ CallbackKeyboardLeave(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial,
 
 static void
 CallbackKeyboardKey(void *Data, struct wl_keyboard *Keyboard, 
-					uint32_t Serial, uint32_t Time, uint32_t Key, uint32_t State)
+                    uint32_t Serial, uint32_t Time, uint32_t Key, uint32_t State)
 {
 	// NOTE(Felix): Use linux/input.h keycodes
 	if (Key == KEY_ESC && State == WL_KEYBOARD_KEY_STATE_PRESSED)
@@ -201,7 +201,7 @@ CallbackKeyboardKey(void *Data, struct wl_keyboard *Keyboard,
 
 static void
 CallbackKeyboardModifiers(void *Data, struct wl_keyboard *Keyboard, uint32_t Serial, 
-						  uint32_t ModsDepressed, uint32_t ModsLatched, uint32_t ModsLocked, uint32_t Group)
+                          uint32_t ModsDepressed, uint32_t ModsLatched, uint32_t ModsLocked, uint32_t Group)
 {
 	// NOTE(Felix): Modifiers and group state(?)
 }
@@ -225,27 +225,27 @@ static const struct wl_keyboard_listener KeyboardListener = {
 
 static void
 CallbackPointerEnter(void *Data, struct wl_pointer *Pointer, 
-					 uint32_t Serial, struct wl_surface *Surface, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
+                     uint32_t Serial, struct wl_surface *Surface, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
 {
 	// NOTE(Felix): Pointer enters surface
 }
- 
+
 static void
 CallbackPointerLeave(void *Data, struct wl_pointer *Pointer, uint32_t Serial, struct wl_surface *Surface)
 {
 	// NOTE(Felix): Pointer leaves surface
 }
- 
+
 static void
 CallbackPointerMotion(void *Data, struct wl_pointer *Pointer, 
-					  uint32_t Time, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
+                      uint32_t Time, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
 {
 	// NOTE(Felix): Pointer motion
 }
- 
+
 static void
 CallbackPointerButton(void *Data, struct wl_pointer *Pointer, 
-					  uint32_t Serial, uint32_t Time, uint32_t Button, uint32_t State)
+                      uint32_t Serial, uint32_t Time, uint32_t Button, uint32_t State)
 {
 	if (State == WL_POINTER_BUTTON_STATE_PRESSED)
 	{
@@ -262,7 +262,7 @@ CallbackPointerAxis(void *Data, struct wl_pointer *Pointer, uint32_t Time, uint3
 {
 	// NOTE(Felix): Scroll / axis notifications
 }
- 
+
 static void
 CallbackPointerFrame(void *Data, struct wl_pointer *Pointer)
 {
@@ -273,13 +273,13 @@ CallbackPointerAxisSource(void *Data, struct wl_pointer *Pointer, uint32_t AxisS
 {
 	// NOTE(Felix): Information about scroll and axis(?)
 }
- 
+
 static void
 CallbackPointerAxisStop(void *Data, struct wl_pointer *Pointer, uint32_t Time, uint32_t Axis)
 {
 	// NOTE(Felix): Stop notification for scroll and axis(?)
 }
- 
+
 static void
 CallbackPointerAxisDiscrete(void *Data, struct wl_pointer *Pointer, uint32_t Axis, int32_t Discrete)
 {
@@ -353,7 +353,7 @@ main(void)
 	wl_keyboard_add_listener(Keyboard, &KeyboardListener, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP);
 	fprintf(stderr, "Connected to keyboard.\n");
 
-	
+
 	// NOTE(Felix): Get Pointer device
 	struct wl_pointer *Pointer = wl_seat_get_pointer(Seat);
 	if (!Pointer)
