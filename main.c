@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/mman.h>
-#include <fcntl.h>
+#include <sys/mman.h> #include <fcntl.h>
 
 #include <linux/input.h>
 
@@ -441,6 +440,11 @@ main(void)
 	while (wl_display_dispatch(Display) != -1 && GlobalRunning) 
 	{
 		// TODO(Felix): Process events - look into "wl_event_queue"?
+		
+		// NOTE(Felix): This hogs the CPU.
+		// I don't really know if there is a fancy wayland-ish way to block here
+		// (For a software renderer that is, eglSwapBuffers can block and thus does not hog the cpu)
+		// Until then I recommend implementing a proper sleep routine here
 	}
 
 	// NOTE(Felix): Cleanup
