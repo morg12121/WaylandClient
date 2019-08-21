@@ -241,6 +241,9 @@ CallbackPointerMotion(void *Data, struct wl_pointer *Pointer,
                       uint32_t Time, wl_fixed_t SurfaceX, wl_fixed_t SurfaceY)
 {
 	// NOTE(Felix): Pointer motion
+	double MouseX = wl_fixed_to_double(SurfaceX);
+	double MouseY = wl_fixed_to_double(SurfaceY); 
+	fprintf(stderr, "%f, %f\n", MouseX, MouseY);
 }
 
 static void
@@ -437,7 +440,7 @@ main(void)
 	// NOTE(Felix): Main loop, dispatch also triggers redraw events
 	while (wl_display_dispatch(Display) != -1 && GlobalRunning) 
 	{
-		// TODO(Felix): Process events - look into "wl_event_queue"
+		// TODO(Felix): Process events - look into "wl_event_queue"?
 	}
 
 	// NOTE(Felix): Cleanup
